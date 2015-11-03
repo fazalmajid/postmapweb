@@ -8,18 +8,22 @@ import (
 	"flag"
 	"os"
 	"os/exec"
+	"os/signal"
 	"encoding/json"
 	"bufio"
 	"strings"
 	"encoding/base64"
 	"sync"
 	"net/mail"
+	"syscall"
+	"runtime/pprof"
 
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/ssh/terminal"
 
     "github.com/labstack/echo"
     mw "github.com/labstack/echo/middleware"
+	"github.com/GeertJohan/go.rice"
 )
 type Domain struct {
 	Name string
@@ -69,12 +73,7 @@ func BasicAuth() echo.HandlerFunc {
 		return echo.NewHTTPError(http.StatusUnauthorized)
 	}
 }
-type Template struct {
-    templates *template.Template
-}
-func (t *Template) Render(w io.Writer, name string, data interface{}) error {
-    return t.templates.ExecuteTemplate(w, name, data)
-}
+
 func View(c *echo.Context) error {
 	domain := c.Get("domain").(Domain)
 	a := readMapFile(domain.MapFile, nil)
@@ -85,7 +84,7 @@ func View(c *echo.Context) error {
 		}
 	}
 	if len(b) == 0 {
-			b = append(b, []string{"@" + domain.Name, "nobody"})
+		b = append(b, []string{"@" + domain.Name, "nobody"})
 	}
     return c.Render(http.StatusOK, "view", struct {
 		Aliases [][]string
@@ -331,60 +330,123 @@ func readMapFile(map_file string, hook func(line string, email string)) []Alias 
 	return aliases
 }
 
+type Renderer struct {
+	box *rice.Box
+	templates map[string]*template.Template
+}
+func (r *Renderer) Load() {
+	box, err := rice.FindBox("templates")
+	if err != nil {
+		log.Fatal(err)
+	}
+	r.box = box
+	r.templates = map[string]*template.Template{
+		"view": r.parse("view.html", "view"),
+		"error": r.parse("error.html", "error"),
+	}
+}
+func (r *Renderer) parse(filename string, name string) *template.Template {
+	templateString, err := r.box.String(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tmpl, err := template.New(name).Parse(templateString)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return tmpl
+}
+func (r Renderer) Render(w io.Writer, name string, data interface{}) error {
+	tmpl := r.templates[name]
+	return tmpl.Execute(w, data)
+}
+
 var verbose *bool
 func main() {
 	// command-line args parsing
 	conf_file := flag.String("c", "/etc/postfix/postmapweb.json", "config file to use")	
 	verbose = flag.Bool("v", false, "verbose logging")	
-	domain := flag.String("d", "", "add domain (requires -p and optionally -v)")
-	virtual := flag.String("m", "/etc/postfix/virtual", "virtual domain map to use with -d")	
+	domain := flag.String("d", "", "add domain user")
+	virtual := flag.String("m", "/etc/postfix/virtual", "virtual domain map to use with -d")
+	cl_password := flag.String("w", "", "password to use with -d (insecure!)")
+	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
+	port := flag.String("p", "localhost:8080", "host address and port to bind to")
 	flag.Parse()
 	conf = readConf(*conf_file)
 
 	if *domain != "" {
 		os.Stdout.Write([]byte("Enter password for " + *domain + ":"))
-		password, err := terminal.ReadPassword(0)
-		if err != nil {
-			log.Fatal("password error: ", err)
+
+		password := []byte(*cl_password)
+		if len(password) == 0 {
+			password, err := terminal.ReadPassword(0)
+			if err != nil {
+				log.Fatal("password error: ", err)
+			}
+			os.Stdout.Write([]byte("\nConfirm password:"))
+			password2, err := terminal.ReadPassword(0)
+			os.Stdout.Write([]byte("\n"))
+			if err != nil {
+				log.Fatal("password error: ", err)
+			}
+			if string(password2) != string(password) {
+				log.Fatal("the passwords do not match")
+			}
 		}
-		os.Stdout.Write([]byte("\nConfirm password:"))
-		password2, err := terminal.ReadPassword(0)
-		os.Stdout.Write([]byte("\n"))
-		if err != nil {
-			log.Fatal("password error: ", err)
-		}
-		if string(password2) != string(password) {
-			log.Fatal("the passwords do not match")
-		}
-		log.Println("read password: ", string(password))
+		//log.Println("read password:", string(password))
+			
 		updateConf(conf, *conf_file, *domain, *virtual, password)
 		log.Println("updated conf")
 		return
 	}
-	// templates
-	t := &Template{
-		templates: template.Must(template.ParseGlob("templates/*.html")),
+
+	// profiler
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println("starting CPU profile")
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGHUP)
+		go func() {
+			s := <-sigChan
+			log.Println("stopping CPU profile due to", s)
+			pprof.StopCPUProfile()
+		}()
 	}
+
+	// go.rice embedded assets
+	assetHandler := http.FileServer(rice.MustFindBox("handsontable").HTTPBox())
+
 	// Echo instance
 	e := echo.New()
-	e.SetRenderer(t)
+
+	r := Renderer{}
+	r.Load()
+	e.SetRenderer(r)
 	
 	// Middleware
-	e.Use(mw.Logger())
+	if *verbose {
+		e.Use(mw.Logger())
+	}
 	e.Use(mw.Recover())
 	e.Use(BasicAuth())
 	//e.Use(mw.Gzip())
 
-	// Routes
-	e.Static("/css/", "css")
-	e.Static("/js/", "js")
-	e.Static("/img/", "img")
-	e.Static("/handsontable/", "bower_components/handsontable")
-	e.Favicon("img/favicon.ico")
+	//e.Favicon("img/favicon.ico")
+	// embedded static assets
+	e.Get("/handsontable/*", func(c *echo.Context) error {
+		http.StripPrefix("/handsontable/", assetHandler).
+			ServeHTTP(c.Response().Writer(), c.Request())
+		return nil
+	})
 	e.Get("/", View)
 	e.Post("/", Change)
 
 	// Start server
-	log.Println("starting postmapweb on port 8080")
-	e.Run(":8080")
+	log.Println("starting postmapweb on", *port)
+	e.Run(*port)
 }
