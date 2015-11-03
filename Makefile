@@ -39,7 +39,8 @@ $(BOWER):
 	npm install bower
 
 HANDSONTABLE=	bower_components/handsontable/dist
-$(JS) $(CSS): $(BOWER)
+$(JS) $(CSS):
+	$(MAKE) $(BOWER)
 	echo n | ./node_modules/bower/bin/bower install handsontable --save
 	mkdir -p handsontable/dist
 	cp $(HANDSONTABLE)/handsontable.full.min.* handsontable/dist
