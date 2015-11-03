@@ -9,6 +9,9 @@
   a user or group with write access to the Postfix config files), and thus
   does not require granting your web server any particular privileges.
 * Fully self-contained executable, no dependencies
+* Will allow users to create aliases for valid RFC-5322 email addresses or use
+  existing local addresses, but not dangerous functionality like command
+  delivery
 
 ## Installation
 

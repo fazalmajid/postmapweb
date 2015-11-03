@@ -1,10 +1,8 @@
 GO=	env GOPATH=`pwd` go
 
-all: run
-run: postmapweb conf.json
+all: postmapweb
+run: postmapweb
 	./postmapweb -v -p :8080 -c conf.json
-conf.json:
-	echo '{"domains": []}' > conf.json
 
 GODEPS=	src/github.com/labstack/echo \
 	src/golang.org/x/crypto/bcrypt \
@@ -51,7 +49,6 @@ profile: cpu.prof
 cpu.pdf: cpu.prof
 	echo 'pdf > cpu.pdf'|go tool pprof postmapweb cpu.prof
 cpu.prof: postmapweb
-	echo '{"domains": []}' > conf.cpu
 	-rm -f virtual.cpu
 	touch virtual.cpu
 	./postmapweb -p :8080 -c conf.cpu -d temboz.com -m virtual.cpu -w sopo
