@@ -1,0 +1,121 @@
+{{define "view"}}
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Postfix Postmap</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/handsontable/dist/handsontable.full.js"></script>
+    <link rel="stylesheet" media="screen" href="/handsontable/dist/handsontable.full.css">
+    <style>
+      body {
+        font-family: -apple-system, ".SFNSText-Regular", "San Francisco", "Lucida Grande", "Source Sans Pro", "Helvetica Neue", Helvetica, "Nimbus Sans L", sans-serif;
+      }
+      .instructions {
+        float: right;
+        width: 25%;
+        border:1px solid black;
+        margin-right: 12px;
+        padding: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Manage {{.Domain}} email aliases</h1>
+    <div class="instructions">
+      <h2>Instructions</h2>
+      <p>To define a "catch-all" alias that handles any address not otherwise
+        specificed, just use @{{.Domain}}</p>
+      <p>Destinations are comma-separated email addresses. Use "nobody" if you
+        want the email to be silently dropped.</p>
+    </div>
+    <div id="spreadsheet"></div>
+    <p>Changelog:</p>
+    <ol id="changelog"></ol>
+    <form method="POST">
+      <input type="hidden" name="changes" value="{}">
+      <input id="submit" type="submit">
+    </form>
+
+    <script>
+      var data = {{.Aliases}};
+      var changes = {};
+      function add_change(cl, s) {
+        var n = document.createElement("li");
+        var n2 = document.createTextNode(s);
+        n.appendChild(n2);
+        cl.appendChild(n);
+      }
+      function show_changes() {
+        var cl = document.getElementById("changelog");
+        var l = [];
+        cl.innerHTML = "";
+        for (var cell in changes) {
+          if (changes[cell]["was"] != null && changes[cell]["was"] != changes[cell]["is"]) {
+            add_change(cl, "removed " + changes[cell]["was"]);
+            l.push({"op": "remove",
+                    "alias": changes[cell]["was"]});
+          }
+          add_change(cl, changes[cell]["is"] + "->" + changes[cell]["target"]);
+          l.push({"op": "add",
+                  "alias": changes[cell]["is"],
+                  "target": changes[cell]["target"]});
+        }
+        document.forms[0].changes.value = JSON.stringify(l);
+      }
+      var errored = {};
+      var container = document.getElementById('spreadsheet');
+      var hot = new Handsontable(container, {
+        data: data,
+        minSpareRows: 1,
+        rowHeaders: true,
+        colHeaders: ["Email alias", "Destination(s)"],
+        contextMenu: true,
+        afterChange: function (change, source) {
+          if (source === 'loadData') {
+            return; //don't save this change
+          }
+          var i;
+          for(i=0; i<change.length; i++) {
+            var cell = change[i][0];
+            var prop = change[i][1];
+            var oldVal = change[i][2];
+            var newVal = change[i][3];
+            if (prop == 0) {
+              if (changes[cell] == null) {
+                if (oldVal == null) {
+                  changes[cell] = {"was": newVal};
+                } else {
+                  changes[cell] = {"was": oldVal};
+                }
+                changes[cell]["is"] = newVal;
+                changes[cell]["target"] = data[cell][1];
+              }
+              if (newVal.indexOf("@{{.Domain}}") == -1) {
+                hot.getCell(cell, 0).style.backgroundColor = "#fc9";
+                document.getElementById("submit").disabled = true;
+                errored[cell] = true;
+              } else {
+                hot.getCell(cell, 0).style.backgroundColor = "#fff";
+                if (errored[cell]) {
+                  delete errored[cell];
+                  hot.getCell(cell, 0).style.backgroundColor = "#fff";
+                  if (Object.keys(errored).length == 0) {
+                    document.getElementById("submit").disabled = false;
+                  }
+                }
+              }
+            } else {
+              if (changes[cell] == null) {
+                changes[cell] = {"was": data[cell][0], "is": data[cell][0]};
+              }
+              changes[cell]["target"] = newVal;
+            }
+          }
+          show_changes();
+        }
+      });
+
+    </script>
+  </body>
+</html>
+{{end}}
