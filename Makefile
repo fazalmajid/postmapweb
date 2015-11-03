@@ -67,5 +67,5 @@ profileclean:
 
 clean: profileclean
 	-rm -f postmapweb bindata.go bin/rice *.rice-box.go
-	-rm -rf node_modules pkg src bower_* handsontable
+	-rm -rf node_modules pkg src bower_*
 	-rm -f *~ */*~ ._*
