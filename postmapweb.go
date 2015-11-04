@@ -379,7 +379,7 @@ func main() {
 		password := []byte(*cl_password)
 		if len(password) == 0 {
 			os.Stdout.Write([]byte("Enter password for " + *domain + ":"))
-			password, err := terminal.ReadPassword(0)
+			password1, err := terminal.ReadPassword(0)
 			if err != nil {
 				log.Fatal("password error: ", err)
 			}
@@ -389,11 +389,12 @@ func main() {
 			if err != nil {
 				log.Fatal("password error: ", err)
 			}
-			if string(password2) != string(password) {
+			if string(password1) != string(password2) {
 				log.Fatal("the passwords do not match")
 			}
+			password = password1
 		}
-		//log.Println("read password:", string(password))
+		//log.Println("read password:", "\"" + string(password) + "\"")
 			
 		updateConf(conf, *conf_file, *domain, *virtual, password)
 		log.Println("updated conf", *conf_file)
