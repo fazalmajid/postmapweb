@@ -157,7 +157,7 @@ func Change(c *echo.Context) error {
 	remap := make(map[string]string)
 	for _, change := range(changes){
 		address, err := mail.ParseAddress(change.Alias)
-		if err != nil || strings.HasSuffix(address.Address, "@" + domain.Name) {
+		if err != nil || !strings.HasSuffix(address.Address, "@" + domain.Name) {
 			log.Println("invalid alias:", change.Alias)
 			return c.Render(http.StatusBadRequest, "error", struct {
 				Error string
