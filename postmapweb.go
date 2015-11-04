@@ -175,14 +175,14 @@ func Change(c *echo.Context) error {
 				}{"invalid email address list for " + address.Address + ": " + change.Target})
 			}
 		default:
-			log.Fatal("unexpected change request:", change)
+			log.Fatal("unexpected change request: ", change)
 		}
 	}
 	// rewrite the map file atomically
 	tmp_file := domain.MapFile + ".web.new"
 	f, err := os.OpenFile(tmp_file, os.O_RDWR | os.O_CREATE | os.O_TRUNC, 0644)
 	if err != nil {
-		log.Fatal("could not rewrite map file", tmp_file, "due to", err)
+		log.Fatal("could not rewrite map file ", tmp_file, " due to ", err)
 	}
 	fw := bufio.NewWriter(f)
 	readMapFile(domain.MapFile, func(line string, email string) {
@@ -240,17 +240,17 @@ func readConf(conf_file string) Config {
 	conf_size := int(conf_stat.Size())
 	f, err := os.Open(conf_file)
 	if err != nil {
-		log.Fatal("could not open conf file", conf_file, "due to", err)
+		log.Fatal("could not open conf file ", conf_file, " due to ", err)
 	}
 	conf_data := make([]byte, conf_size)
 	bytes_read, err := f.Read(conf_data)
 	if err != nil || bytes_read < conf_size {
-		log.Fatal("could not read conf file", conf_file, "error:", err, "read", bytes_read, "bytes")
+		log.Fatal("could not read conf file ", conf_file, " error: ", err, " read ", bytes_read, " bytes ")
 	}
 	var conf Config
 	err = json.Unmarshal(conf_data, &conf)
 	if err != nil || bytes_read < conf_size {
-		log.Fatal("could not decode conf file", conf_file, "due to", err)
+		log.Fatal("could not decode conf file ", conf_file, " due to ", err)
 	}
 	if *verbose {
 		log.Println("config file:", conf)
@@ -261,7 +261,7 @@ func readConf(conf_file string) Config {
 func updateConf(conf Config, conf_file string, domain string, virtual string, password []byte) {
 	pass_hash, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
 	if err != nil {
-		log.Fatal("Could not hash the password:", err)
+		log.Fatal("Could not hash the password: ", err)
 	}
 	// if the domain already exists in the config file,
 	// change the password and map file
@@ -278,19 +278,19 @@ func updateConf(conf Config, conf_file string, domain string, virtual string, pa
 	}
 	conf_json, err := json.MarshalIndent(conf, "", "  ")
 	if err != nil {
-		log.Fatal("Could not marshal the config:", err)
+		log.Fatal("Could not marshal the config: ", err)
 	}
 	f, err := os.OpenFile(conf_file, os.O_RDWR | os.O_CREATE | os.O_TRUNC, 0644)
 	if err != nil {
-		log.Fatal("could not write conf file", conf_file, "due to", err)
+		log.Fatal("could not write conf file ", conf_file, " due to ", err)
 	}
 	nbytes, err := f.Write(conf_json)
 	if err != nil || nbytes < len(conf_json) {
-		log.Fatal("could not write conf file", conf_file, "due to", err)
+		log.Fatal("could not write conf file ", conf_file, " due to ", err)
 	}
 	err = f.Close()
 	if err != nil {
-		log.Fatal("could not finish writing conf file", conf_file, "due to", err)
+		log.Fatal("could not finish writing conf file ", conf_file, " due to ", err)
 	}
 }
 
@@ -301,7 +301,7 @@ type Alias struct {
 func readMapFile(map_file string, hook func(line string, email string)) []Alias {
 	f, err := os.Open(map_file)
 	if err != nil {
-		log.Fatal("could not open map file", map_file, "due to", err)
+		log.Fatal("could not open map file ", map_file, " due to ", err)
 	}
 	aliases := make([]Alias, 0)
 	scanner := bufio.NewScanner(bufio.NewReader(f))
@@ -376,19 +376,18 @@ func main() {
 	conf = readConf(*conf_file)
 
 	if *domain != "" {
-		os.Stdout.Write([]byte("Enter password for " + *domain + ":"))
-
 		password := []byte(*cl_password)
 		if len(password) == 0 {
+			os.Stdout.Write([]byte("Enter password for " + *domain + ":"))
 			password, err := terminal.ReadPassword(0)
 			if err != nil {
-				log.Fatal("password error:", err)
+				log.Fatal("password error: ", err)
 			}
 			os.Stdout.Write([]byte("\nConfirm password:"))
 			password2, err := terminal.ReadPassword(0)
 			os.Stdout.Write([]byte("\n"))
 			if err != nil {
-				log.Fatal("password error:", err)
+				log.Fatal("password error: ", err)
 			}
 			if string(password2) != string(password) {
 				log.Fatal("the passwords do not match")
@@ -397,7 +396,7 @@ func main() {
 		//log.Println("read password:", string(password))
 			
 		updateConf(conf, *conf_file, *domain, *virtual, password)
-		log.Println("updated conf")
+		log.Println("updated conf", *conf_file)
 		return
 	}
 
