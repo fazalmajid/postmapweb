@@ -229,8 +229,10 @@ func Change(c *echo.Context) error {
 		log.Println("postfix reload failed:", err)
 	}
 
-	// response
-	return View(c)
+	// HTTP 303 is specifically for POST/Redirect/GET
+	// see: https://en.wikipedia.org/wiki/Post/Redirect/Get
+	c.Response().Header().Set("Location", "/")
+	return c.HTML(303, "<script>document.location.href = \"/\";</script>")
 }
 
 func readConf(conf_file string) Config {
