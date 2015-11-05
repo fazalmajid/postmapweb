@@ -46,6 +46,36 @@ To start the server:
 e.g. nginx or HAProxy. Do not run it without encryption or expose it to the
 Internet by binding it elsewhere than localhost!
 
+The config files in `/etc/postfix` are owned by `root`, not `postfix`, and it
+is not good practice to run a server such as this as `root`. Fortunately the
+`virtual_alias_maps` Postfix configuration directive accepts multiple maps. My
+recommended configuration is to create a new user `postmapweb` in the
+`postfix` group, create a subdirectory `/etc/postfix/domains` owned by
+`postmapweb` and create one virtual map file per domain there. Make sure you
+remove any entries from `/etc/postfix/virtual` when you migrate them to
+`/etc/postfix/domains/<example.com>` as Postfix looks up aliases in the order
+of the files, and thus any change to an alias in
+`/etc/postfix/domains/<example.com>` would be preempted by the leftover entry
+in `/etc/postfix/virtual`.
+
+Thus:
+
+    (backup your /etc/postfix directory)
+    useradd -d /etc/postfix/domains -s /bin/sh -G postfix postmapweb
+    (or whatever the equivalent is on your operating system)
+    mkdir /etc/postfix/domains
+    grep example.com /etc/postfix/virtual > /etc/postfix/domains/example.com
+    postmap /etc/postfix/domains/example.com
+    chown -R postmapweb:postfix /etc/postfix/domains
+    (assuming your existing virtual_alias_maps = dbm:/etc/postfix/virtual, adjust to taste)
+    postconf -e virtual_alias_maps=dbm:/etc/postfix/virtual,dbm:/etc/postfix/domains/example.com
+    postfix reload
+    grep -v example.com /etc/postfix/virtual > /tmp/foo;cat /tmp/foo > /etc/postfix/virtual
+    postmap /etc/postfix/virtual
+    postfix reload
+    postmapweb -c /etc/postfix/postmapweb.json -d example.com -m /etc/postfix/domains/example.com
+    postmapweb -v -c /etc/postfix/postmapweb.json
+
 ## Usage
 
       -c string

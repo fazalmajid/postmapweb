@@ -202,7 +202,9 @@ func Change(c *echo.Context) error {
 		}
 	})
 	for email, dest := range(remap) {
-		new_line(fw, email, dest)
+		if dest != "" {
+			new_line(fw, email, dest)
+		}
 	}
 	fw.Flush()
 	f.Close()
