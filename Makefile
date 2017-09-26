@@ -6,13 +6,17 @@ run: postmapweb
 
 GODEPS=	src/github.com/labstack/echo \
 	src/golang.org/x/crypto/bcrypt \
+	src/github.com/dgrijalva/jwt-go \
 	src/github.com/GeertJohan/go.rice
 GODEPS_PATCHED=	src/golang.org/x/crypto/ssh/terminal
 CSS=	handsontable/dist/handsontable.full.min.css
-JS=	handsontable/dist/handsontable.full.min.js
+JS=	handsontable/dist/handsontable.full.min.js templates/view.js
 ASSETS=	$(CSS) $(JS) templates/view.html templates/error.html
 TEMPLATES= templates/view.html templates/error.html
-RICE=	templates.rice-box.go handsontable.rice-box.go
+#RICE=	templates.rice-box.go handsontable.rice-box.go
+RICE=	rice-box.go
+rice-box.go: $(TEMPLATES) $(CSS) $(JS) bin/rice
+	bin/rice embed-go
 templates.rice-box.go: $(TEMPLATES) $(CSS) $(JS) bin/rice
 	bin/rice embed-go
 handsontable.rice-box.go: $(CSS) $(JS) bin/rice
@@ -39,11 +43,11 @@ $(BOWER):
 	npm install bower
 
 HANDSONTABLE=	bower_components/handsontable/dist
-$(JS) $(CSS):
-	$(MAKE) $(BOWER)
-	echo n | ./node_modules/bower/bin/bower install handsontable --save
-	mkdir -p handsontable/dist
-	cp $(HANDSONTABLE)/handsontable.full.min.* handsontable/dist
+# $(JS) $(CSS):
+# 	$(MAKE) $(BOWER)
+# 	echo n | ./node_modules/bower/bin/bower install handsontable --save
+# 	mkdir -p handsontable/dist
+# 	cp $(HANDSONTABLE)/handsontable.full.min.* handsontable/dist
 
 profile: cpu.prof
 	echo top10|go tool pprof postmapweb cpu.prof

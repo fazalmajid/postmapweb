@@ -17,6 +17,8 @@ import (
 	"net/mail"
 	"syscall"
 	"runtime/pprof"
+	"bytes"
+	"errors"
 
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/ssh/terminal"
@@ -42,14 +44,9 @@ var conf Config
 const (
         Basic = "Basic"
 )
-func BasicAuth() echo.HandlerFunc {
-	return func(c *echo.Context) error {
-		// Skip WebSocket
-		if (c.Request().Header.Get(echo.Upgrade)) == echo.WebSocket {
-			return nil
-		}
-
-		auth := c.Request().Header.Get(echo.Authorization)
+func BasicAuth(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		auth := c.Request().Header.Get(echo.HeaderAuthorization)
 		l := len(Basic)
 
 		if len(auth) > l+1 && auth[:l] == Basic {
@@ -62,19 +59,30 @@ func BasicAuth() echo.HandlerFunc {
 						for _, d := range conf.Domains {
 							if cred[:i] == d.Name && bcrypt.CompareHashAndPassword([]byte(d.PassHash), []byte(cred[i+1:])) == nil {
 								c.Set("domain", d)
-								return nil
+								err := next(c)
+								if err != nil {
+									c.Error(err)
+								}
+								return err
 							}
 						}
 					}
 				}
 			}
 		}
-		c.Response().Header().Set(echo.WWWAuthenticate, Basic+" realm=Restricted")
+		c.Response().Header().Set(echo.HeaderWWWAuthenticate, Basic+" realm=Restricted")
 		return echo.NewHTTPError(http.StatusUnauthorized)
 	}
 }
 
-func View(c *echo.Context) error {
+func View(c echo.Context) error {
+	domain := c.Get("domain").(Domain)
+    return c.Render(http.StatusOK, "view", struct {
+		Domain string
+	}{domain.Name})
+}
+
+func JS(c echo.Context) error {
 	domain := c.Get("domain").(Domain)
 	a := readMapFile(domain.MapFile, nil)
 	b := make([][]string, 0)
@@ -86,11 +94,25 @@ func View(c *echo.Context) error {
 	if len(b) == 0 {
 		b = append(b, []string{"@" + domain.Name, "nobody"})
 	}
-    return c.Render(http.StatusOK, "view", struct {
+
+	tmpl := c.Echo().Renderer.(Renderer).Template("js")
+	var w bytes.Buffer
+	err := tmpl.Execute(&w, struct {
 		Aliases [][]string
 		Domain string
 	}{b, domain.Name})
+	if err != nil {
+		return err
+	}
+	if w.Len() < len("<script></script>") {
+		return errors.New("Truncated JS template output")
+	}
+	if  string(w.Bytes()[:len("<script>")]) != "<script>" {
+		return errors.New("unexpected JS template output")
+	}
+	return c.Blob(200, "application/javascript", w.Bytes()[len("<script>"):w.Len() - len("</script>")])
 }
+
 type ChangeRequest struct {
 	Op string
 	Alias string
@@ -131,9 +153,9 @@ func validate(target string, local map[string]bool) bool {
 }
 
 var rewrite_lock sync.Mutex
-func Change(c *echo.Context) error {
+func Change(c echo.Context) error {
 	var changes []ChangeRequest
-	err := json.Unmarshal([]byte(c.Form("changes")), &changes)
+	err := json.Unmarshal([]byte(c.FormValue("changes")), &changes)
 	if err != nil {
 		return err
 	}
@@ -347,13 +369,21 @@ func (r *Renderer) Load() {
 	r.box = box
 	r.templates = map[string]*template.Template{
 		"view": r.parse("view.html", "view"),
+		"js": r.parse("view.js", "js"),
 		"error": r.parse("error.html", "error"),
 	}
+}
+func (r Renderer) Template(name string) *template.Template{
+	return r.templates[name]
 }
 func (r *Renderer) parse(filename string, name string) *template.Template {
 	templateString, err := r.box.String(filename)
 	if err != nil {
 		log.Fatal(err)
+	}
+	if strings.HasSuffix(filename, ".js") {
+		// recipe from: https://damienradtke.com/post/go-js-template/
+		templateString = "<script>" + templateString + "</script>"
 	}
 	tmpl, err := template.New(name).Parse(templateString)
 	if err != nil {
@@ -361,7 +391,7 @@ func (r *Renderer) parse(filename string, name string) *template.Template {
 	}
 	return tmpl
 }
-func (r Renderer) Render(w io.Writer, name string, data interface{}) error {
+func (r Renderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
 	tmpl := r.templates[name]
 	return tmpl.Execute(w, data)
 }
@@ -431,27 +461,28 @@ func main() {
 
 	r := Renderer{}
 	r.Load()
-	e.SetRenderer(r)
+	e.Renderer = r
 	
 	// Middleware
 	if *verbose {
 		e.Use(mw.Logger())
 	}
 	e.Use(mw.Recover())
-	e.Use(BasicAuth())
+	e.Use(BasicAuth)
 	//e.Use(mw.Gzip())
 
 	//e.Favicon("img/favicon.ico")
 	// embedded static assets
-	e.Get("/handsontable/*", func(c *echo.Context) error {
+	e.GET("/handsontable/*", func(c echo.Context) error {
 		http.StripPrefix("/handsontable/", assetHandler).
-			ServeHTTP(c.Response().Writer(), c.Request())
+			ServeHTTP(c.Response().Writer, c.Request())
 		return nil
 	})
-	e.Get("/", View)
-	e.Post("/", Change)
+	e.GET("/", View)
+	e.GET("/view.js", JS)
+	e.POST("/", Change)
 
 	// Start server
 	log.Println("starting postmapweb on", *port)
-	e.Run(*port)
+	e.Start(*port)
 }
