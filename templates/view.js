@@ -76,9 +76,10 @@ function check_pending() {
 }
 //document.getElementById("submit").onsubmit = check_pending;
 var errored = {};
+var hot;
 function onload_handler() {
   var container = document.getElementById('spreadsheet');
-  var hot = new Handsontable(container, {
+  hot = new Handsontable(container, {
     data: data,
     minSpareRows: 1,
     rowHeaders: true,
