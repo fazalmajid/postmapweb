@@ -122,15 +122,19 @@ type ChangeRequest struct {
 	Target string
 }
 
-func new_line(fw *bufio.Writer, email string, dest string) {
+func new_line(label string, fw *bufio.Writer, email string, dest string) {
 	pad := 40 - len(email)
 	if pad <= 0 {
 		pad = 1
 	}
 	fw.WriteString(email + strings.Repeat(" ", pad) + dest + "\n")
+	//log.Println(label, "new_line", email, dest)
 }
 
 func validate(target string, local map[string]bool) bool {
+	if is_spam(target) {
+		return true
+	}
 	for _, email := range strings.Split(target, ",") {
 		email = strings.TrimSpace(email)
 		// RFC 5322 parsing/validation of email addresses, accept no inferior
@@ -156,6 +160,10 @@ func validate(target string, local map[string]bool) bool {
 }
 
 var rewrite_lock sync.Mutex
+
+func is_spam(e string) bool {
+	return e == "spam" || e == "SPAM" || strings.HasPrefix(e, "550 ")
+}
 
 func Change(c echo.Context) error {
 	var changes []ChangeRequest
@@ -214,35 +222,51 @@ func Change(c echo.Context) error {
 	// recipient of "spam" goes to its own file
 	spam, err := os.OpenFile(tmp_file+".spam", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		log.Fatal("could not rewrite spa, map file ", tmp_file+".spam", " due to ", err)
+		log.Fatal("could not rewrite spam map file ", tmp_file+".spam", " due to ", err)
 	}
 	sw := bufio.NewWriter(spam)
+	//log.Println("Preparing to rewrite map files")
 	readMapFile(domain.MapFile, func(line string, email string) {
+		//log.Printf("RLMF \"%s\" \"%s\" \"%s\"\n", line, email, remap[email])
 		if email == "" {
 			fw.WriteString(line + "\n")
 		} else {
 			dest, ok := remap[email]
 			if ok {
-				if dest != "" {
-					if dest == "spam" {
-						new_line(sw, email, "550 Stop spamming me")
-					} else {
-						new_line(fw, email, dest)
-					}
-					// remove any further references
-					remap[email] = ""
+				switch {
+				case dest == "":
+					break
+				case dest == "spam":
+					new_line("SPAM", sw, email, "550 Stop spamming me")
+				case dest == "SPAM":
+					new_line("SPAM", sw, email, "550 Stop spamming me")
+				case strings.HasPrefix(dest, "550 "):
+					new_line("SPAM", sw, email, dest)
+				default:
+					new_line("GOOD", fw, email, dest)
 				}
+				// remove any further references
+				remap[email] = ""
 			} else {
-				fw.WriteString(line + "\n")
+				fields := strings.Fields(line)
+				dest = strings.Join(fields[1:len(fields)], " ")
+				if is_spam(dest) {
+					sw.WriteString(line + "\n")
+				} else {
+					fw.WriteString(line + "\n")
+				}
 			}
 		}
 	})
 	for email, dest := range remap {
 		if dest != "" {
-			if dest == "spam" {
-				new_line(fw, email, dest)
+			if is_spam(dest) {
+				if !strings.HasPrefix(dest, "550 ") {
+					dest = "550 Stop spamming me"
+				}
+				new_line("SPAM", sw, email, dest)
 			} else {
-				new_line(sw, email, dest)
+				new_line("GOOD", fw, email, dest)
 			}
 		}
 	}
@@ -372,6 +396,7 @@ func readMapFile(map_file string, hook func(line string, email string)) []Alias 
 	}
 	return good
 }
+
 func readSingleMapFile(map_file string, hook func(line string, email string)) ([]Alias, error) {
 	f, err := os.Open(map_file)
 	if err != nil {
@@ -388,17 +413,24 @@ func readSingleMapFile(map_file string, hook func(line string, email string)) ([
 			continue
 		}
 		fields := strings.Fields(line)
-		// there could be a comment after the map entry
-		if len(fields) >= 2 && strings.ContainsRune(fields[0], '@') {
-			if strings.ContainsRune(fields[0], '@') {
-				aliases = append(aliases, Alias{fields[0], fields[1]})
-			}
+		if strings.HasSuffix(map_file, ".spam") {
+			aliases = append(aliases, Alias{fields[0], strings.Join(fields[1:len(fields)], " ")})
 			if hook != nil {
 				hook(line, fields[0])
 			}
 		} else {
-			if hook != nil {
-				hook(line, "")
+			// there could be a comment after the map entry
+			if len(fields) >= 2 && strings.ContainsRune(fields[0], '@') {
+				if strings.ContainsRune(fields[0], '@') {
+					aliases = append(aliases, Alias{fields[0], fields[1]})
+				}
+				if hook != nil {
+					hook(line, fields[0])
+				}
+			} else {
+				if hook != nil {
+					hook(line, "")
+				}
 			}
 		}
 	}
