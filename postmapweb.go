@@ -295,6 +295,7 @@ func Change(c echo.Context) error {
 	cmd := exec.Command("postmap", domain.MapFile)
 	err = cmd.Run()
 	if err != nil {
+		os.Rename(domain.MapFile, domain.MapFile+".bad")
 		os.Rename(domain.MapFile+".old", domain.MapFile)
 		return err
 	}
@@ -302,6 +303,7 @@ func Change(c echo.Context) error {
 	cmd = exec.Command("postmap", domain.MapFile+".spam")
 	err = cmd.Run()
 	if err != nil {
+		os.Rename(domain.MapFile+".spam", domain.MapFile+".spam.bad")
 		os.Rename(domain.MapFile+".spam.old", domain.MapFile+".spam")
 	}
 
