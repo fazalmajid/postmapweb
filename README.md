@@ -12,6 +12,8 @@
 * Will allow users to create aliases for valid RFC-5322 email addresses or use
   existing local addresses, but not dangerous functionality like command
   delivery
+* manages a spam map file in access(5) format when the recipient starts with
+  `550 `
 
 ## Installation
 
