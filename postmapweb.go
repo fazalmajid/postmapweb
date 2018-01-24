@@ -184,7 +184,9 @@ func Change(c echo.Context) error {
 	local := make(map[string]bool)
 	for i := 0; i < len(a); i++ {
 		if strings.Contains(a[i].Email, "@"+domain.Name) && !strings.ContainsAny(a[i].Target, "@|") {
-			local[a[i].Target] = true
+			for _, dest := range strings.Split(a[i].Target, ",") {
+				local[strings.TrimSpace(dest)] = true
+			}
 		}
 	}
 	// dedupe and normalize changes
