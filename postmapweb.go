@@ -194,10 +194,14 @@ func Change(c echo.Context) error {
 	for _, change := range changes {
 		address, err := mail.ParseAddress(change.Alias)
 		if err != nil || !strings.HasSuffix(address.Address, "@"+domain.Name) {
-			log.Println("invalid alias:", change.Alias)
-			return c.Render(http.StatusBadRequest, "error", struct {
-				Error string
-			}{"invalid alias: " + change.Alias})
+			if change.Alias == "@"+domain.Name {
+				address = &mail.Address{Address: change.Alias}
+			} else {
+				log.Println("invalid alias:", change.Alias)
+				return c.Render(http.StatusBadRequest, "error", struct {
+					Error string
+				}{"invalid alias: " + change.Alias})
+			}
 		}
 		switch change.Op {
 		case "remove":
