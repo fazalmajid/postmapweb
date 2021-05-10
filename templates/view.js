@@ -16,7 +16,7 @@ function show_changes() {
       l.push({"op": "remove",
               "alias": changes[cell]["was"]});
     }
-    add_change(cl, changes[cell]["is"] + "->" + changes[cell]["target"]);
+    add_change(cl, changes[cell]["is"] + " \u2192 " + changes[cell]["target"]);
     l.push({"op": "add",
             "alias": changes[cell]["is"],
             "target": changes[cell]["target"]});

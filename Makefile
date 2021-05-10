@@ -9,7 +9,7 @@ JS=	handsontable/dist/handsontable.full.min.js templates/view.js
 ASSETS=	$(CSS) $(JS) templates/view.html templates/error.html
 TEMPLATES= templates/view.html templates/error.html
 
-postmapweb: postmapweb.go
+postmapweb: postmapweb.go $(JS) $(CSS)
 	$(GO) build postmapweb.go
 
 $(GODEPS):
@@ -49,6 +49,14 @@ cpu.prof: postmapweb
 	sleep 1
 	pkill -9 postmapweb
 
+test: postmapweb
+	-mkdir -p test
+	/usr/bin/echo "sentfrom.com\tdomain" > test/virtual
+	/usr/bin/echo "something@sentfrom.com\tmajid" >> test/virtual
+	./postmapweb -c test/conf.json -d sentfrom.com -m test/virtual
+testrun: test
+	./postmapweb -v -p :8081 -c test/conf.json
+
 profileclean:
 	-rm -f *.cpu cpu.*
 
@@ -57,4 +65,5 @@ clean: profileclean
 	-rm -rf pkg
 	-rm -f postmapweb bindata.go bin/rice *.rice-box.go
 	-rm -rf node_modules pkg src bower_*
+	-rm -rf test
 	-rm -f *~ */*~ ._*

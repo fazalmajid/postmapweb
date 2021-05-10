@@ -468,7 +468,7 @@ func (r Renderer) Template(name string) *template.Template {
 	return r.templates[name]
 }
 func (r *Renderer) parse(filename string, name string) *template.Template {
-	templateBytes, err := assets.ReadFile(filename)
+	templateBytes, err := assets.ReadFile("templates/" + filename)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -567,8 +567,7 @@ func main() {
 	//e.Favicon("img/favicon.ico")
 	// embedded static assets
 	e.GET("/handsontable/*", func(c echo.Context) error {
-		http.StripPrefix("/handsontable/", assetHandler).
-			ServeHTTP(c.Response().Writer, c.Request())
+		assetHandler.ServeHTTP(c.Response().Writer, c.Request())
 		return nil
 	})
 	e.GET("/", View)
