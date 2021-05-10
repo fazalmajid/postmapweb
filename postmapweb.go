@@ -551,6 +551,7 @@ func main() {
 
 	// Echo instance
 	e := echo.New()
+	e.HideBanner = true
 
 	r := Renderer{}
 	r.Load()
