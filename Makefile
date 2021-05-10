@@ -1,33 +1,16 @@
-GO=	env GOPATH=`pwd` go
+GO=	go
 
 all: postmapweb
 run: postmapweb
 	./postmapweb -v -p :8080 -c conf.json
 
-GODEPS=	src/github.com/labstack/echo \
-	src/golang.org/x/crypto/bcrypt \
-	src/github.com/dgrijalva/jwt-go \
-	src/github.com/GeertJohan/go.rice
-GODEPS_PATCHED=	src/golang.org/x/crypto/ssh/terminal
 CSS=	handsontable/dist/handsontable.full.min.css
 JS=	handsontable/dist/handsontable.full.min.js templates/view.js
 ASSETS=	$(CSS) $(JS) templates/view.html templates/error.html
 TEMPLATES= templates/view.html templates/error.html
-#RICE=	templates.rice-box.go handsontable.rice-box.go
-RICE=	rice-box.go
-rice-box.go: $(TEMPLATES) $(CSS) $(JS) bin/rice
-	bin/rice embed-go
-templates.rice-box.go: $(TEMPLATES) $(CSS) $(JS) bin/rice
-	bin/rice embed-go
-handsontable.rice-box.go: $(CSS) $(JS) bin/rice
-	bin/rice embed-go
 
-postmapweb: postmapweb.go $(GODEPS_PATCHED) $(GODEPS) $(RICE)
-	$(GO) build postmapweb.go $(RICE)
-
-bin/rice:
-	$(GO) get -u github.com/GeertJohan/go.rice
-	$(GO) get -u github.com/GeertJohan/go.rice/rice
+postmapweb: postmapweb.go
+	$(GO) build postmapweb.go
 
 $(GODEPS):
 	$(GO) get ${@:src/%=%}
@@ -70,6 +53,8 @@ profileclean:
 	-rm -f *.cpu cpu.*
 
 clean: profileclean
+	-chmod -R u+rwx pkg
+	-rm -rf pkg
 	-rm -f postmapweb bindata.go bin/rice *.rice-box.go
 	-rm -rf node_modules pkg src bower_*
 	-rm -f *~ */*~ ._*

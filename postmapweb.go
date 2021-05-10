@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -23,7 +24,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/GeertJohan/go.rice"
 	"github.com/labstack/echo"
 	mw "github.com/labstack/echo/middleware"
 )
@@ -38,6 +38,12 @@ type Config struct {
 }
 
 var conf Config
+
+//go:embed templates/view.html templates/view.js templates/error.html
+var assets embed.FS
+
+//go:embed handsontable
+var staticAssets embed.FS
 
 // BasicAuth returns an HTTP basic authentication middleware.
 //
@@ -448,16 +454,10 @@ func readSingleMapFile(map_file string, hook func(line string, email string)) ([
 }
 
 type Renderer struct {
-	box       *rice.Box
 	templates map[string]*template.Template
 }
 
 func (r *Renderer) Load() {
-	box, err := rice.FindBox("templates")
-	if err != nil {
-		log.Fatal(err)
-	}
-	r.box = box
 	r.templates = map[string]*template.Template{
 		"view":  r.parse("view.html", "view"),
 		"js":    r.parse("view.js", "js"),
@@ -468,10 +468,11 @@ func (r Renderer) Template(name string) *template.Template {
 	return r.templates[name]
 }
 func (r *Renderer) parse(filename string, name string) *template.Template {
-	templateString, err := r.box.String(filename)
+	templateBytes, err := assets.ReadFile(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
+	templateString := string(templateBytes)
 	if strings.HasSuffix(filename, ".js") {
 		// recipe from: https://damienradtke.com/post/go-js-template/
 		templateString = "<script>" + templateString + "</script>"
@@ -546,7 +547,7 @@ func main() {
 	}
 
 	// go.rice embedded assets
-	assetHandler := http.FileServer(rice.MustFindBox("handsontable").HTTPBox())
+	assetHandler := http.FileServer(http.FS(staticAssets))
 
 	// Echo instance
 	e := echo.New()
