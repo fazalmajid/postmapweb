@@ -10,7 +10,7 @@ ASSETS=	$(CSS) $(JS) templates/view.html templates/error.html
 TEMPLATES= templates/view.html templates/error.html
 
 postmapweb: postmapweb.go $(JS) $(CSS)
-	$(GO) build postmapweb.go
+	$(GO) build
 
 $(GODEPS):
 	$(GO) get ${@:src/%=%}

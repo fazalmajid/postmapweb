@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"embed"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -42,47 +41,8 @@ var conf Config
 //go:embed templates/view.html templates/view.js templates/error.html
 var assets embed.FS
 
-//go:embed handsontable
+//go:embed handsontable static
 var staticAssets embed.FS
-
-// BasicAuth returns an HTTP basic authentication middleware.
-//
-// For valid credentials it calls the next handler.
-// For invalid credentials, it sends "401 - Unauthorized" response.
-const (
-	Basic = "Basic"
-)
-
-func BasicAuth(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		auth := c.Request().Header.Get(echo.HeaderAuthorization)
-		l := len(Basic)
-
-		if len(auth) > l+1 && auth[:l] == Basic {
-			b, err := base64.StdEncoding.DecodeString(auth[l+1:])
-			if err == nil {
-				cred := string(b)
-				for i := 0; i < len(cred); i++ {
-					if cred[i] == ':' {
-						// Verify credentials
-						for _, d := range conf.Domains {
-							if cred[:i] == d.Name && bcrypt.CompareHashAndPassword([]byte(d.PassHash), []byte(cred[i+1:])) == nil {
-								c.Set("domain", d)
-								err := next(c)
-								if err != nil {
-									c.Error(err)
-								}
-								return err
-							}
-						}
-					}
-				}
-			}
-		}
-		c.Response().Header().Set(echo.HeaderWWWAuthenticate, Basic+" realm=Restricted")
-		return echo.NewHTTPError(http.StatusUnauthorized)
-	}
-}
 
 func View(c echo.Context) error {
 	domain := c.Get("domain").(Domain)
@@ -562,12 +522,18 @@ func main() {
 		e.Use(mw.Logger())
 	}
 	e.Use(mw.Recover())
+	e.Use(SecurityHeaders)
 	e.Use(BasicAuth)
 	//e.Use(mw.Gzip())
 
 	//e.Favicon("img/favicon.ico")
+
 	// embedded static assets
 	e.GET("/handsontable/*", func(c echo.Context) error {
+		assetHandler.ServeHTTP(c.Response().Writer, c.Request())
+		return nil
+	})
+	e.GET("/static/*", func(c echo.Context) error {
 		assetHandler.ServeHTTP(c.Response().Writer, c.Request())
 		return nil
 	})
