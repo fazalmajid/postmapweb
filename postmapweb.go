@@ -23,8 +23,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
+	"github.com/labstack/echo/v4"
+	mw "github.com/labstack/echo/v4/middleware"
 )
 
 type Domain struct {

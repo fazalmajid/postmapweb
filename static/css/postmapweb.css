@@ -1,0 +1,10 @@
+body {
+  font-family: -apple-system, ".SFNSText-Regular", "San Francisco", "Lucida Grande", "Source Sans Pro", "Helvetica Neue", Helvetica, "Nimbus Sans L", sans-serif;
+}
+.instructions {
+  float: right;
+  width: 25%;
+  border:1px solid black;
+  margin-right: 12px;
+  padding: 12px;
+}

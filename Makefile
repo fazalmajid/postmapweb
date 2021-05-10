@@ -9,7 +9,7 @@ JS=	handsontable/dist/handsontable.full.min.js templates/view.js
 ASSETS=	$(CSS) $(JS) templates/view.html templates/error.html
 TEMPLATES= templates/view.html templates/error.html
 
-postmapweb: postmapweb.go $(JS) $(CSS)
+postmapweb: postmapweb.go middleware.go $(JS) $(CSS)
 	$(GO) build
 
 $(GODEPS):

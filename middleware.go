@@ -6,7 +6,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 // BasicAuth returns an HTTP basic authentication middleware.
@@ -55,10 +55,10 @@ func SecurityHeaders(next echo.HandlerFunc) echo.HandlerFunc {
 		h.Set(echo.HeaderContentSecurityPolicy,
 			"default-src 'self'; img-src 'self' data: 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'",
 		)
-		h.Set("X-Frame-Options", "\"SAMEORIGIN\" always")
-		h.Set("X-Xss-Protection", "\"1; mode=block\" always")
-		h.Set("X-Content-Type-Options", "\"nosniff\" always")
-		h.Set("Referrer-Policy", "no-referrer-when-downgrade")
+		h.Set(echo.HeaderXFrameOptions, "\"SAMEORIGIN\" always")
+		h.Set(echo.HeaderXXSSProtection, "\"1; mode=block\" always")
+		h.Set(echo.HeaderXContentTypeOptions, "\"nosniff\" always")
+		h.Set(echo.HeaderReferrerPolicy, "no-referrer-when-downgrade")
 		h.Set("Feature-Policy",
 			"accelerometer 'none'; ambient-light-sensor 'none'; autoplay 'none'; battery 'none'; camera 'none'; display-capture 'none'; document-domain 'none'; encrypted-media 'none'; execution-while-not-rendered 'none'; execution-while-out-of-viewport 'none'; fullscreen 'none'; geolocation 'none'; gyroscope 'none'; layout-animations 'none'; legacy-image-formats 'none'; magnetometer 'none'; microphone 'none'; midi 'none'; navigation-override 'none'; oversized-images 'none'; payment 'none'; picture-in-picture 'none'; publickey-credentials-get 'none'; sync-xhr 'none'; usb 'none'; vr 'none'; wake-lock 'none'; screen-wake-lock 'none'; web-share 'none'; xr-spatial-tracking 'none'; notifications 'none'; push 'none'; speaker 'none'; vibrate 'none'; payment 'none'")
 		h.Set("Permissions-Policy",
