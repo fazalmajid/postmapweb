@@ -26,6 +26,7 @@
  * Version: 6.2.2
  * Release date: 19/12/2018 (built at 18/12/2018 14:40:17)
  */
+/* modified by Fazal Majid */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -13853,6 +13854,10 @@ TextEditor.prototype.createElements = function () {
   this.textareaParentStyle.zIndex = '-1';
   this.TEXTAREA_PARENT.appendChild(this.TEXTAREA);
   this.instance.rootElement.appendChild(this.TEXTAREA_PARENT);
+  // make iOS text fields less annoying
+  this.TEXTAREA.autocapitalize = false;
+  this.TEXTAREA.autocomplete = false;
+  this.TEXTAREA.autocorrect = false;
 };
 
 TextEditor.prototype.getEditedCell = function () {
