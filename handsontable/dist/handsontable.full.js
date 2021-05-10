@@ -13855,7 +13855,7 @@ TextEditor.prototype.createElements = function () {
   this.TEXTAREA_PARENT.appendChild(this.TEXTAREA);
   this.instance.rootElement.appendChild(this.TEXTAREA_PARENT);
   // make iOS text fields less annoying
-  this.TEXTAREA.autocapitalize = false;
+  this.TEXTAREA.autocapitalize = "none";
   this.TEXTAREA.autocomplete = false;
   this.TEXTAREA.autocorrect = false;
 };
