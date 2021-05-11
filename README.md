@@ -14,17 +14,16 @@
   delivery
 * manages a spam map file in access(5) format when the recipient starts with
   `550 `
+* optionally run a script after the map files are updated, e.g. to sort the
+  files, commit changes in git, etc.
 
 ## Installation
 
 ### Dependencies
 
 #### Required
-* Go (tested on 1.5)
+* Go 1.16 or later
 * Git
-
-#### Optional
-* Node.js (for Bower, to rebuild the Handsontable CSS/JS)
 
 ## Building postmapweb
 * Run "make".
@@ -77,6 +76,36 @@ Thus:
     postfix reload
     postmapweb -c /etc/postfix/postmapweb.json -d example.com -m /etc/postfix/domains/example.com
     postmapweb -v -c /etc/postfix/postmapweb.json
+
+## Optional script hook
+
+You can set the `script` key in the JSON config file (manual edit of the file
+is required). It will be run in the same working directory as `postmapweb`,
+and the domain name of the changes will be passed as argument 1.
+
+Here is the script I use to sort my files. I have one `$domain` and one `$domain.spam` file per domain under `/etc/postfix/domains`:
+
+```
+#!/bin/sh
+cd /etc/postfix/domains
+for x in *.dir; do
+    f=`echo $x|sed -e 's/.dir$//g'`
+    echo sorting $f
+    case $f in
+	*.spam)
+	    gsort $f > $f.tmp
+	    ;;
+	*)
+	    head -1 $f > $f.tmp
+	    tail +2 $f | gsort >> $f.tmp
+	    ;;
+    esac
+    mv $f.tmp $f
+    postmap $f
+    chown postmapweb:postfix $f*
+done
+postfix reload
+```
 
 ## Usage
 

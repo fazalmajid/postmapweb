@@ -31,6 +31,7 @@ type Domain struct {
 	Name     string
 	MapFile  string
 	PassHash string
+	Script   string
 }
 type Config struct {
 	Domains []Domain
@@ -265,6 +266,8 @@ func Change(c echo.Context) error {
 	}
 
 	cmd := exec.Command("postmap", domain.MapFile)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
 		log.Println("error running postmap on map file:", err)
@@ -274,6 +277,8 @@ func Change(c echo.Context) error {
 	}
 
 	cmd = exec.Command("postmap", domain.MapFile+".spam")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
 		log.Println("error running postmap on spam file:", err)
@@ -282,9 +287,22 @@ func Change(c echo.Context) error {
 	}
 
 	cmd = exec.Command("postfix", "reload")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
 		log.Println("postfix reload failed:", err)
+	}
+
+	// optional script hook
+	if domain.Script != "" {
+		cmd = exec.Command(domain.Script, domain.Name)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+		if err != nil {
+			log.Println("script", domain.Script, "failed:", err)
+		}
 	}
 
 	// HTTP 303 is specifically for POST/Redirect/GET
@@ -336,7 +354,7 @@ func updateConf(conf Config, conf_file string, domain string, virtual string, pa
 		}
 	}
 	if !existing {
-		conf.Domains = append(conf.Domains, Domain{domain, virtual, string(pass_hash)})
+		conf.Domains = append(conf.Domains, Domain{domain, virtual, string(pass_hash), ""})
 	}
 	conf_json, err := json.MarshalIndent(conf, "", "  ")
 	if err != nil {
@@ -506,7 +524,7 @@ func main() {
 		}()
 	}
 
-	// go.rice embedded assets
+	// serve go:embed embedded assets
 	assetHandler := http.FileServer(http.FS(staticAssets))
 
 	// Echo instance
