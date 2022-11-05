@@ -14,13 +14,19 @@
     <div class="instructions">
       <h2>Instructions</h2>
       <p>To define a "catch-all" alias that handles any address not otherwise
-        specified, just use @{{.Domain}} as the alias.</p>
+        specified, just use @{{.Domain}} (no user part) as the alias.</p>
       <p>Destinations are comma-separated email addresses. Use "nobody" if you
         want the email to be silently dropped.</p>
       <p>To block an email address that is receiving spam, use "spam", "SPAM"
         or a more specific message like "550 I never signed up for your stupid
         mailing list".</p>
     </div>
+    <h2>Quick entry</h2>
+    <form method="POST">
+      <input name="user">@{{.Domain}} ➡ ︎<input name="dest">
+      <input type="submit" value="Add">
+    </form>
+    <h2>Full list</h2>
     <div id="spreadsheet"></div>
     <p>Changelog:</p>
     <ol id="changelog"></ol>

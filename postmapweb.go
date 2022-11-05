@@ -134,12 +134,24 @@ func is_spam(e string) bool {
 
 func Change(c echo.Context) error {
 	var changes []ChangeRequest
-	err := json.Unmarshal([]byte(c.FormValue("changes")), &changes)
-	if err != nil {
-		return err
+	domain := c.Get("domain").(Domain)
+
+	if c.FormValue("changes") == "" && c.FormValue("user") != "" && c.FormValue("dest") != "" {
+		// quick entry form
+		changes = []ChangeRequest{
+			{
+				"add",
+				c.FormValue("user") + "@" + domain.Name,
+				c.FormValue("dest"),
+			},
+		}
+	} else {
+		err := json.Unmarshal([]byte(c.FormValue("changes")), &changes)
+		if err != nil {
+			return err
+		}
 	}
 	log.Println("Received changes", changes)
-	domain := c.Get("domain").(Domain)
 
 	// serialize map file rewrites
 	rewrite_lock.Lock()

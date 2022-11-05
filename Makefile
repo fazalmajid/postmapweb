@@ -31,8 +31,8 @@ cpu.prof: postmapweb
 
 test: postmapweb
 	-mkdir -p test
-	/usr/bin/echo "sentfrom.com\tdomain" > test/virtual
-	/usr/bin/echo "something@sentfrom.com\tmajid" >> test/virtual
+	echo "sentfrom.com:domain" | tr : '\t' > test/virtual
+	echo "something@sentfrom.com:majid" | tr : '\t' >> test/virtual
 	./postmapweb -c test/conf.json -d sentfrom.com -m test/virtual
 testrun: test
 	./postmapweb -v -p :8081 -c test/conf.json
