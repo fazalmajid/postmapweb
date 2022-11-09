@@ -21,7 +21,7 @@ function show_changes() {
                 "alias": changes[cell]["is"],
                 "target": changes[cell]["target"]});
     }
-    document.forms[0].changes.value = JSON.stringify(l);
+    document.forms[1].changes.value = JSON.stringify(l);
 }
 function change_handler(change, source) {
     if (source === 'loadData') {
