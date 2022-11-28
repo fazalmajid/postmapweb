@@ -23,7 +23,12 @@
     </div>
     <h2>Quick entry</h2>
     <form method="POST">
-      <input name="user">@{{.Domain}} ➡ ︎<input name="dest">
+      <input name="user"
+             autocomplete="off" autocorrect="off" autocapitalize="off"
+             spellcheck="false">@{{.Domain}}
+      ➡ ︎<input name="dest"
+               autocomplete="off" autocorrect="off" autocapitalize="off"
+               spellcheck="false">
       <input type="submit" value="Add">
     </form>
     <h2>Full list</h2>
