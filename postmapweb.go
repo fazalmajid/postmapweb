@@ -141,8 +141,8 @@ func Change(c echo.Context) error {
 		changes = []ChangeRequest{
 			{
 				"add",
-				c.FormValue("user") + "@" + domain.Name,
-				c.FormValue("dest"),
+				strings.TrimSpace(c.FormValue("user")) + "@" + domain.Name,
+				strings.TrimSpace(c.FormValue("dest")),
 			},
 		}
 	} else {
