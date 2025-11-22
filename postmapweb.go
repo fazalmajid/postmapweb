@@ -42,7 +42,7 @@ var conf Config
 //go:embed templates/view.html templates/view.js templates/error.html
 var assets embed.FS
 
-//go:embed handsontable static
+//go:embed gridjs static
 var staticAssets embed.FS
 
 func View(c echo.Context) error {
@@ -559,7 +559,7 @@ func main() {
 	//e.Favicon("img/favicon.ico")
 
 	// embedded static assets
-	e.GET("/handsontable/*", func(c echo.Context) error {
+	e.GET("/gridjs/*", func(c echo.Context) error {
 		assetHandler.ServeHTTP(c.Response().Writer, c.Request())
 		return nil
 	})

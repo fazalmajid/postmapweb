@@ -126,5 +126,5 @@ postfix reload
 ## Credits
 
 * Go: https://golang.org/
-* HandsOnTable: http://handsontable.com/
+* Grid.js: https://gridjs.io/
 * And of course Wietse Venema's Postfix: http://www.postfix.org/
